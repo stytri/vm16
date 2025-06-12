@@ -23,7 +23,7 @@
 ;// SOFTWARE.
 ```
 ```c
-;// Version 0.1.0
+;// Version 0.1.1
 ```
 ## Description
 
@@ -31,7 +31,7 @@ Implements devices for [vm16](https://github.com/stytri/vm16) running in separat
 
 ## Implementation
 
-Implemented in C[23](https://en.wikipedia.org/wiki/C23_(C_standard_revision)) + POSIX Threads.
+Implemented in C[23](https://en.wikipedia.org/wiki/C23_(C_standard_revision)) + POSIX [Threads](https://en.wikipedia.org/wiki/Pthreads).
 
 ```c
 #include <stdlib.h>
