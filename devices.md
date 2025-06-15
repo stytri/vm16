@@ -53,7 +53,8 @@ typedef struct {
 	uint16_t              irq_bit;
 	uint16_t              a, b, c;
 	void                 *context;
-	uint16_t             *memory;
+	uint16_t           *(*mem_at)(void *, uint16_t x);
+	void                 *memory;
 	pthread_t             thread;
 }
 	device;
@@ -64,6 +65,7 @@ static int new_device(
 	uint16_t              irq_bit,
 	void               *(*handler)(void *context),
 	void                 *context,
+	uint16_t           *(*mem_at)(void *, uint16_t x),
 	void                 *memory,
 	device              **devp
 ) {
@@ -76,6 +78,7 @@ static int new_device(
 		dev->irq_reg = irq_reg;
 		dev->irq_bit = irq_bit;
 		dev->context = context;
+		dev->mem_at  = mem_at;
 		dev->memory  = memory;
 		atomic_store(&dev->running, true);
 		err = pthread_create(&dev->thread, nullptr, handler, dev);
@@ -170,10 +173,12 @@ Output character string:
 ```c
 		case DEVCMD_IO_PUTS:
 			{
-				uint16_t const  len = dev->b;
-				uint16_t const *buf = &dev->memory[dev->a];
+				uint16_t const len = dev->b;
+				uint16_t       addr = dev->a;
+				void          *mem  = dev->memory;
+				uint16_t    *(*mem_at)(void *, uint16_t) = dev->mem_at;
 				for(dev->b = 0; dev->b < len; dev->b++) {
-					int c = *buf++ & 255;
+					int c = *mem_at(mem, addr++) & 255;
 					dev->a = (uint16_t)(c = fputc(c, dev->context));
 					if((c == '\n') || (c == '\0') || (c == EOF)) break;
 				}
@@ -184,12 +189,14 @@ Input character string:
 ```c
 		case DEVCMD_IO_GETS:
 			{
-				uint16_t const  len = dev->b;
-				uint16_t       *buf = &dev->memory[dev->a];
+				uint16_t const len = dev->b;
+				uint16_t       addr = dev->a;
+				void          *mem  = dev->memory;
+				uint16_t    *(*mem_at)(void *, uint16_t) = dev->mem_at;
 				for(dev->b = 0; dev->b < len; dev->b++) {
 					int c = fgetc(dev->context);
 					if(c == EOF) break;
-					*buf++ = c & 255;
+					*mem_at(mem, addr++) = c & 255;
 					if((c == '\n') || (c == '\0')) break;
 				}
 			}
