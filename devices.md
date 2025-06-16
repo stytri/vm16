@@ -246,10 +246,11 @@ static void *dev_block(void *context) {
 	uint16_t       *(*mem_at)(void *, uint16_t) = dev->mem_at;
 	struct dev_block *blk = dev->context;
 ```
+If the file is empty, assume it is a newly created file, and initialise it to all zeroes:
 ```c
 	rewind(blk->io);
 	if(fread(blk->buffer, sizeof(blk->buffer), 1, blk->io) != 1) {
-		memset(blk->buffer, 0, 0);
+		memset(blk->buffer, 0, sizeof(blk->buffer));
 		uint16_t n;
 		for(n = 0; n < blk->n_blocks; n++) {
 			if(fwrite(blk->buffer, sizeof(blk->buffer), 1, blk->io) != 1) {
@@ -353,6 +354,7 @@ End of i/o operation - save error code, and signal command complete:
 		err = ferror(blk->io) ? 0 : errno;
 		atomic_fetch_or(dev->irq_reg, dev->irq_bit);
 	}
+	fclose(blk->io);
 	return nullptr;
 }
 ```
