@@ -23,7 +23,7 @@
 ;// SOFTWARE.
 ```
 ```c
-;// Version 0.1.0
+;// Version 0.1.1
 ```
 ## Description
 
@@ -58,7 +58,7 @@ typedef struct {
 ```c
 static void *vm16clock_handler(void *context) {
 	vm16clock *clk = context;
-	clock_gettime(CLOCK_MONOTONIC, &clk->next);
+	clock_gettime(CLOCK_REALTIME, &clk->next);
 	for(;;) {
 		if(!atomic_load(&clk->running)) {
 			break;
@@ -68,7 +68,7 @@ static void *vm16clock_handler(void *context) {
 			clk->next.tv_nsec -= 1'000'000'000l;
 			clk->next.tv_sec  += 1;
 		}
-		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &clk->next, NULL);
+		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &clk->next, NULL);
 		atomic_fetch_or(clk->irq_reg, clk->irq_bit);
 	}
 	return nullptr;
