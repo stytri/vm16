@@ -23,7 +23,7 @@
 ;// SOFTWARE.
 ```
 ```c
-;// Version 0.1.1
+;// Version 0.2.0
 ```
 ## Description
 
@@ -120,14 +120,20 @@ static device *del_device(
 #define IOERROR(IOERROR_prefered,IOERROR_stdc) ((IOERROR_prefered+0) ? (IOERROR_prefered) : (IOERROR_stdc))
 ```
 ### STDIO Devices
-
-These have a pre-set i/o stream, and deal only with character based i/o.
+These have separate pre-set input and output streams, and deal only with character based i/o.
+```c
+struct io {
+	FILE *in;
+	FILE *out;
+};
+```
 ```c
 static void *dev_stdio(void *context) {
 	device     *dev = context;
 	void       *mem = dev->memory;
 	uint16_t *(*mem_at)(void *, uint16_t) = dev->mem_at;
-	for(int err;;) {
+	struct io  *io = dev->context;
+	for(int err = 0;;) {
 ```
 Wait for a command, abort if we are no longer running:
 ```c
@@ -160,27 +166,33 @@ Return error code from last command:
 Return End-Of-File status:
 ```c
 		case DEVCMD_IO_EOF:
-			dev->a = feof(dev->context);
+			dev->a = feof(io->in);
 			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
 			continue;
 ```
 Synchronise - flush pending write:
 ```c
 		case DEVCMD_IO_SYNC:
-			fflush(dev->context);
-			break;
+			fflush(io->out);
+			err = ferror(io->out) ? 0 : errno;
+			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
+			continue;
 ```
 Output single character:
 ```c
 		case DEVCMD_IO_PUTC:
-			dev->a = (uint16_t)fputc(dev->a & 255, dev->context);
-			break;
+			dev->a = (uint16_t)fputc(dev->a & 255, io->out);
+			err = ferror(io->out) ? 0 : errno;
+			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
+			continue;
 ```
 Input single character:
 ```c
 		case DEVCMD_IO_GETC:
-			dev->a = (uint16_t)fgetc(dev->context);
-			break;
+			dev->a = (uint16_t)fgetc(io->in);
+			err = ferror(io->in) ? 0 : errno;
+			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
+			continue;
 ```
 Output character string:
 ```c
@@ -190,11 +202,13 @@ Output character string:
 				uint16_t       addr = dev->a;
 				for(dev->b = 0; dev->b < len; dev->b++) {
 					int c = *mem_at(mem, addr++) & 255;
-					dev->a = (uint16_t)(c = fputc(c, dev->context));
+					dev->a = (uint16_t)(c = fputc(c, io->out));
 					if(c == EOF) break;
 				}
 			}
-			break;
+			err = ferror(io->out) ? 0 : errno;
+			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
+			continue;
 ```
 Input character string:
 ```c
@@ -203,19 +217,19 @@ Input character string:
 				uint16_t const len = dev->b;
 				uint16_t       addr = dev->a;
 				for(dev->b = 0; dev->b < len; dev->b++) {
-					int c = fgetc(dev->context);
+					int c = fgetc(io->in);
 					if(c == EOF) break;
 					*mem_at(mem, addr++) = c & 255;
 					if((c == '\n') || (c == '\0')) break;
 				}
 			}
-			break;
+			err = ferror(io->in) ? 0 : errno;
+			atomic_fetch_or(dev->irq_reg, dev->irq_bit);
+			continue;
 ```
 End of i/o operation - save error code, and signal command complete:
 ```c
 		}
-		err = ferror(dev->context) ? 0 : errno;
-		atomic_fetch_or(dev->irq_reg, dev->irq_bit);
 	}
 	return nullptr;
 }
