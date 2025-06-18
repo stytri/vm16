@@ -85,29 +85,31 @@ _init$1:
 		BRA _init$1
 	MOV R0 0                    ; exit code = 0
 	HLT R0                      ; halt
-
+```
+```asm
+CODE:
 _wait_device_ready:
-	; R0 device number
-	PSH R1
-	MOV R1 1
-	SHL R1 R0                   ; R1 = device ready bit mask
+	; RB device number
+	PSH R0
+	MOV R0 1
+	SHL R0 RB                   ; R0 = device ready bit mask
 _wait_device_ready$1:
-	IFC R1 @_device_ready       ; loop while device ready bit clear
+	IFC R0 @_device_ready       ; loop while device ready bit clear
 		BRA _wait_device_ready$1
-	POP R1
+	POP R0
 	RET RC
 
 _wait_then_clear_device_ready:
-	; R0 device number
-	PSH R1
-	MOV R1 1
-	SHL R1 R0                   ; R1 = device ready bit mask
+	; RB device number
+	PSH R0
+	MOV R0 1
+	SHL R0 RB                   ; R0 = device ready bit mask
 _wait_then_clear_device_ready$1:
-	IFC R1 @_device_ready       ; loop while device ready bit clear
+	IFC R0 @_device_ready       ; loop while device ready bit clear
 		BRA _wait_then_clear_device_ready$1
-	XOR R1 0xFFFF               ; invert device ready bit mask
-	AND @_device_ready R1       ; clear device ready bit
-	POP R1
+	XOR R0 0xFFFF               ; invert device ready bit mask
+	AND @_device_ready R0       ; clear device ready bit
+	POP R0
 	RET RC
 
 _clk_irq_handler:
@@ -131,67 +133,121 @@ _nul_irq_handler:
 #### STDIO Functions
 ```asm
 CODE:
-_wait_stdio_ready:
+io_flush:
+	; RB Device index
 	PSH RC
 	PSH R0
-	MOV R0 STDIO
-	JSR RC _wait_device_ready
-	POP R0
-	RET
-
-_wait_then_clear_stdio_ready:
-	PSH RC
-	PSH R0
-	MOV R0 STDIO
+	PSH R1
+	MOV R0 0
+	SHL R1 RB 12
 	JSR RC _wait_then_clear_device_ready
+	DEV IO_SYNC 0 R0 R1
+	JSR RC _wait_device_ready
+	POP R1
 	POP R0
 	RET
 
-flush:
-	PSH RC
-	PSH R0
-	JSR RC _wait_then_clear_stdio_ready
-	DEV IO_SYNC STDIO
-	JSR RC _wait_stdio_ready
-	POP R0
-	RET
-
-putc:
+io_putc:
+	; RB Device index
 	; R0 character
 	PSH RC
-	JSR RC _wait_then_clear_stdio_ready
-	DEV IO_PUTC STDIO R0
+	PSH R1
+	SHL R1 RB 12
+	JSR RC _wait_then_clear_device_ready
+	DEV IO_PUTC 0 R0 R1
+	POP R1
 	RET
 
-puts:
+io_puts:
+	; RB Device index
 	; R0 string address
 	; R1 string length
 	PSH RC
-	JSR RC _wait_then_clear_stdio_ready
-	DEV IO_PUTS STDIO R0 R1
+	PSH R3
+	SHL R3 RB 12
+	IOR R1 R3
+	JSR RC _wait_then_clear_device_ready
+	DEV IO_PUTS 0 R0 R1
+	POP R3
 	RET
 
-puti:
+io_puti:
+	; RB Device index
 	; R0 integer
 	PSH RC
 	PSH R1
 	MOD R1 R0 10                ; R1 = R0 % 10
 	DIV R0 10                   ; R0 = R0 / 10
 	IFC SF Z                    ; if R0 non-zero
-		JSR RC puti             ; recursive call self
+		JSR RC io_puti          ; recursive call self
 	ADD R0 R1 0x30              ; R0 = R1 + '0'
 	JSR RC putc                 ; call putc
 	POP R1
+	RET
+
+io_gets:
+	; RB Device index
+	; R0 string address
+	; R1 maximum string length
+	PSH RC
+	PSH R3
+	SHL R3 RB 12
+	IOR R1 R3
+	JSR RC _wait_then_clear_device_ready
+	DEV IO_GETS 0 R0 R1
+	JSR RC _wait_device_ready
+	DEV IO_QUERY 0 R0 R1    ; gets address + read in length
+	POP R3
+	; R0 string address
+	; R1 string length
+	RET
+```
+```asm
+CODE:
+flush:
+	PSH RC
+	PSH RB
+	MOV RB STDIO
+	JSR RC io_flush
+	POP RB
+	RET
+
+putc:
+	; R0 character
+	PSH RC
+	PSH RB
+	MOV RB STDIO
+	JSR RC io_putc
+	POP RB
+	RET
+
+puts:
+	; R0 string address
+	; R1 string length
+	PSH RC
+	PSH RB
+	MOV RB STDIO
+	JSR RC io_puts
+	POP RB
+	RET
+
+puti:
+	; R0 integer
+	PSH RC
+	PSH RB
+	MOV RB STDIO
+	JSR RC io_puti
+	POP RB
 	RET
 
 gets:
 	; R0 string address
 	; R1 maximum string length
 	PSH RC
-	JSR RC _wait_then_clear_stdio_ready
-	DEV IO_GETS STDIO R0 R1
-	JSR RC _wait_stdio_ready
-	DEV IO_QUERY STDIO R0 R1    ; gets address + read in length
+	PSH RB
+	MOV RB STDIO
+	JSR RC io_gets
+	POP RB
 	; R0 string address
 	; R1 string length
 	RET
