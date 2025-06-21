@@ -23,7 +23,7 @@
 ;// SOFTWARE.
 ```
 ```msa;c
-;// Version 0.0.3
+;// Version 0.0.4
 ```
 ## Description
 
@@ -44,6 +44,16 @@ CALL%r {
 	$4 = 0xB, EMIT_ORXM_Y_INSTRUCTION,
 	$3 = $9, $2 = PC, $1 = MOV,
 	$4 = 0x4, EMIT_ORXM_INSTRUCTION
+}
+```
+#### IF
+
+If register is non-zero (any bit set)
+```msa
+{IF}
+IF%r {
+	$2 = $1, $3 = 0xFFFF, $1 = IFB,
+	EMIT_ORXM_L_INSTRUCTION
 }
 ```
 ### Start Address and Interrupt Handler Assignments
@@ -536,7 +546,7 @@ isxdigit:
 	PSH R1
 	MOV R1 R0
 	JSR RC isdigit
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isxdigit$1
 	MOV R0 R1
 	JSR RC isupper
@@ -561,11 +571,11 @@ isalpha:
 	PSH R1
 	MOV R1 R0
 	JSR RC isupper
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isalpha$1
 	MOV R0 R1
 	JSR RC islower
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isalpha$1
 isalpha$0:
 	MOV R0 0
@@ -585,15 +595,15 @@ isalnum:
 	PSH R1
 	MOV R1 R0
 	JSR RC isdigit
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isalnum$1
 	MOV R0 R1
 	JSR RC isupper
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isalnum$1
 	MOV R0 R1
 	JSR RC islower
-	IFB R0 0xFFFF
+	IF  R0
 		BRA isalnum$1
 isalnum$0:
 	MOV R0 0
@@ -661,7 +671,7 @@ skip$1:
 	ADD R3 1
 	SUB R1 1
 skip$2:
-	IFB R1 0xFFFF
+	IF  R1
 		BRA skip$1
 skip$3:
 	MOV R0 R3
@@ -745,7 +755,7 @@ modify$1:
 	ADD R3 1
 	SUB R1 1
 modify$2:
-	IFB R1 0xFFFF
+	IF  R1
 		BRA modify$1
 	POP R3
 	POP R1
@@ -887,7 +897,7 @@ main:
 		JSR RC prompt
 		JSR RC getcommand
 		JSR RC do_command
-		IFB R0 0xFFFF           ; loop while R0 is non-zero
+		IF  R0                  ; loop while R0 is non-zero
 			BRA main$1
 	RET
 ```
