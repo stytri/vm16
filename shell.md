@@ -104,7 +104,7 @@ _clock_ticks:
 ```asm
 CODE:
 ```
-##### _int
+##### _init
 
 system initialization
 ```asm
@@ -135,7 +135,7 @@ _wait_device_ready$1:
 	POP R0
 	RET RC
 ```
-##### _wait_device_ready
+##### _wait_then_clear_device_ready
 
 waits until a device bit is set signalling the receipt of the device interrupt; then clears it
 ```asm
