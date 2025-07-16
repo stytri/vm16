@@ -23,7 +23,7 @@
 ;// SOFTWARE.
 ```
 ```msa;c
-;// Version 0.0.4
+;// Version 0.1.0
 ```
 ## Description
 
@@ -37,7 +37,7 @@ A simple shell for the **vm16** emulator.
 
 Call a sub-routine whose address is in the register argument; saves the return address in RC
 ```msa
-{CALL}
+{{hidden}CALL}
 CALL%r {
 	$9 = $1,
 	$5 = 1, $3 = PC, $2 = RC, $1 = ADD,
@@ -50,7 +50,7 @@ CALL%r {
 
 If register is non-zero (any bit set)
 ```msa
-{IF}
+{{hidden}IF}
 IF%r {
 	$2 = $1, $3 = 0xFFFF, $1 = IFB,
 	EMIT_ORXM_L_INSTRUCTION
